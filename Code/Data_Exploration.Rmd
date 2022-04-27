@@ -34,83 +34,21 @@ theme_set(theme_classic())
 options(scipen = 4)
 ```
 
-#Gathering data for Clinton River
+#Load Processed Data
 ```{r gathering.data}
 #CLINTON RIVER AT STERLING HEIGHTS, MI
-ClintonRiver <- readWQPqw(siteNumbers = "USGS-04161820", 
-                     parameterCd = c("00915", # calcium, filtered mg/L
-                                     "00925", # magnesium, filtered mg/L
-                                     "00930", # sodium,filtered mg/L
-                                     "90095",  # Specific conductance, uS/cm
-                                     "31625",  # Fecal coliform, CFU/100 mL
-                                     "31673"),  # Fecal streptocci, CFU/100 mL
-                     startDate = "",
-                     endDate = "2022-01-01")
 
-#Read discharge data
-ClintonFlow <- readNWISdv(siteNumbers = "02089500",
-                     parameterCd = "00060", # discharge (cfs)
-                     startDate = "",
-                     endDate = "2022-01-01")
-
-#Save raw data
-write.csv(ClintonRiver, "./Raw_Data/ClintonRiverWQ.csv")
-write_csv(ClintonFlow, "./Raw_Data/ClintonRiverDischarge.csv")
-
-
-```
-#Processing data
-
-```{r processing.data}
-
-#Renaming columns for WQ data
-ClintonRiver_processed <- ClintonRiver %>%
-  select(MonitoringLocationIdentifier, ActivityStartDate, HydrologicCondition, 
-         CharacteristicName, ResultMeasureValue) %>%
-  mutate(Variable = case_when(CharacteristicName == "Fecal Coliform" ~ "FecalColiform_cfu.100mL", 
-                              CharacteristicName == "Fecal Streptococcus Group Bacteria" ~ "FecalStrep_cfu.100mL", #no fecal strep in data
-                              CharacteristicName == "Specific conductance" ~ "SpC_uS.cm",
-                              CharacteristicName == "Calcium" ~ "Calcium_mg.L",
-                              CharacteristicName == "Magnesium" ~ "Magnesium_mg.L",
-                              CharacteristicName == "Sodium" ~ "Sodium_mg.L")) %>%
-  select(-CharacteristicName) %>%
-  pivot_wider(names_from = "Variable", values_from = "ResultMeasureValue") 
-
-
-#Renaming columns for flow data
-ClintonFlow_processed <- ClintonFlow %>%
-  select(ActivityStartDate = Date, Flow_cfs = X_00060_00003) %>%
-  filter(ActivityStartDate >= min(ClintonRiver_processed$ActivityStartDate) & 
-           ActivityStartDate <= max(ClintonRiver_processed$ActivityStartDate))
-
-#Joining WQ and discharge datasets
-ClintonWQFlow_processed <- ClintonRiver_processed %>%
-  full_join(., ClintonFlow_processed) %>% #full join because we can keep daily flow measurements
-  mutate(Year = year(ActivityStartDate), 
-         Month = month(ActivityStartDate), 
-         DOY = yday(ActivityStartDate),)
-
-#Adding all indicator values into one column as Variable
-ClintonWQFlow_long <- ClintonWQFlow_processed %>%
-  pivot_longer(cols = c("FecalColiform_cfu.100mL", "SpC_uS.cm", 
-                        "Sodium_mg.L", "Magnesium_mg.L", "Calcium_mg.L", "Flow_cfs"),
-               names_to = "Variable", values_to = "Value") %>%
-  drop_na(Value)
-
-#Evaluate flow variability
-ClintonFlow_summary <- ClintonWQFlow_processed %>%
-  group_by(DOY) %>%
-  summarise(median_Flow_cfs = median(Flow_cfs, na.rm = TRUE),
-            p25_Flow_cfs = quantile(Flow_cfs, 0.25, na.rm = TRUE),
-            p75_Flow_cfs = quantile(Flow_cfs, 0.75, na.rm = TRUE))
-
-#Save processed data
 write.csv(ClintonWQFlow_long, "./Processed_Data/ClintonRiverWQ_Processed.csv")
 write.csv(ClintonFlow_summary, "./Processed_Data/ClintonRiverFlow_Processed.csv")
 
 
 ```
 
+#Visualize WQ parameters
+
+```{r}
+
+```
 
 
 
